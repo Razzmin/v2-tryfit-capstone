@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Import all pages directly
 import 'homepage.dart';
@@ -28,11 +30,58 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  // ✅ Navigate directly to each page instead of using route names
+  // ✅ Navigate directly to each page
   void _navigateToPage(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
+  // ✅ Delete Account Logic (Firebase)
+  Future<void> _deleteAccount() async {
+    try {
+      setState(() => _showDeleting = true);
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Delete Firestore user data (if exists)
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .delete()
+            .catchError((_) {});
+
+        // Delete Authentication account
+        await user.delete();
+
+        // Sign out the user
+        await FirebaseAuth.instance.signOut();
+      }
+
+      setState(() => _showDeleting = false);
+
+      // Navigate back to login
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const Login()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      setState(() => _showDeleting = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to delete account: ${e.toString()}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // ✅ Confirmation Dialog before delete
   Future<void> _showDeleteAccountDialog() async {
     final result = await showDialog<bool>(
       context: context,
@@ -41,7 +90,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         title: const Text('Delete Your Account?'),
         content: const Text(
           'Are you sure you want to delete your account?\n'
-          'This action is permanent and cannot be undone. All your data including:\n\n'
+          'This action is permanent and cannot be undone.\n\n'
+          'All your data including:\n'
           '• Order history\n'
           '• Preferences\n'
           '• Personal information\n\n'
@@ -58,25 +108,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9747FF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(3), // ✅ near square corners
+              ),
             ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                color: Colors.white, // ✅ white text
+              ),
+            ),
           ),
         ],
       ),
     );
 
     if (result == true) {
-      setState(() => _showDeleting = true);
-      await Future.delayed(const Duration(milliseconds: 600));
-      setState(() => _showDeleting = false);
-
-      // Navigate to login after deletion
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const Login()),
-        (route) => false,
-      );
+      await _deleteAccount();
     }
   }
 
@@ -167,7 +216,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                   const SizedBox(height: 12),
 
-                  // Centered name only (no email)
                   const Center(
                     child: Text(
                       'Your Name',
@@ -210,6 +258,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         page: const ChangePassword(),
                       ),
                       const SizedBox(height: 6),
+
+                      // DELETE ACCOUNT (main menu)
                       InkWell(
                         onTap: _showDeleteAccountDialog,
                         borderRadius: BorderRadius.circular(10),
@@ -267,7 +317,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   backgroundColor: const Color(0xFF9747FF),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 child: const Text(

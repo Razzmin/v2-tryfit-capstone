@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ShippingLocation extends StatefulWidget {
   const ShippingLocation({Key? key}) : super(key: key);
@@ -9,9 +11,6 @@ class ShippingLocation extends StatefulWidget {
 }
 
 class _ShippingLocationState extends State<ShippingLocation> {
-  // -----------------------
-  // Data (converted from your RN object)
-  // -----------------------
   static const Map<String, List<String>> MUNICIPALITIES = {
     'Bamban': [
       'Anupul',
@@ -122,10 +121,7 @@ class _ShippingLocationState extends State<ShippingLocation> {
     ],
   };
 
-  // -----------------------
-  // UI state
-  // -----------------------
-  String _stage = 'municipality'; // 'municipality' | 'barangay' | 'final'
+  String _stage = 'municipality';
   String _municipality = '';
   String _barangay = '';
   String _finalAddress = '';
@@ -138,6 +134,38 @@ class _ShippingLocationState extends State<ShippingLocation> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedAddress();
+  }
+
+  Future<void> _loadSavedAddress() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('shipping_locations')
+        .doc('default')
+        .get();
+
+    if (doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        _nameController.text = data['name'] ?? '';
+        _phoneController.text = data['phone'] ?? '';
+        _houseController.text = data['house'] ?? '';
+        _postalController.text = data['postalCode'] ?? '';
+        _municipality = data['municipality'] ?? '';
+        _barangay = data['barangay'] ?? '';
+        _finalAddress = data['fullAddress'] ?? '';
+        _stage = _barangay.isNotEmpty ? 'final' : 'municipality';
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
@@ -146,9 +174,6 @@ class _ShippingLocationState extends State<ShippingLocation> {
     super.dispose();
   }
 
-  // -----------------------
-  // Picker/item helpers
-  // -----------------------
   List<DropdownMenuItem<String>> _getPickerItems() {
     if (_stage == 'municipality') {
       final items = <DropdownMenuItem<String>>[
@@ -190,7 +215,6 @@ class _ShippingLocationState extends State<ShippingLocation> {
         _finalAddress = '$_barangay, $_municipality, Tarlac';
         _stage = 'final';
       } else {
-        // if already final, reset to start
         _municipality = '';
         _barangay = '';
         _finalAddress = '';
@@ -199,9 +223,6 @@ class _ShippingLocationState extends State<ShippingLocation> {
     });
   }
 
-  // -----------------------
-  // Save with validation (local only)
-  // -----------------------
   Future<void> _handleSave() async {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
@@ -237,12 +258,15 @@ class _ShippingLocationState extends State<ShippingLocation> {
     }
 
     setState(() => _saving = true);
-    await Future.delayed(
-      const Duration(milliseconds: 600),
-    ); // simulate save delay
-    setState(() => _saving = false);
+    await Future.delayed(const Duration(milliseconds: 600));
 
-    // Compose saved address (local only)
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showAlert('Error', 'No user is currently logged in.');
+      setState(() => _saving = false);
+      return;
+    }
+
     final savedAddress = {
       'name': name,
       'phone': phone,
@@ -254,7 +278,15 @@ class _ShippingLocationState extends State<ShippingLocation> {
       'createdAt': DateTime.now().toIso8601String(),
     };
 
-    // show success then pop
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('shipping_locations')
+        .doc('default')
+        .set(savedAddress, SetOptions(merge: true));
+
+    setState(() => _saving = false);
+
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -269,7 +301,6 @@ class _ShippingLocationState extends State<ShippingLocation> {
       ),
     );
 
-    // You can pass savedAddress back if needed:
     Navigator.of(context).pop(savedAddress);
   }
 
@@ -289,9 +320,6 @@ class _ShippingLocationState extends State<ShippingLocation> {
     );
   }
 
-  // -----------------------
-  // Build
-  // -----------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -304,7 +332,6 @@ class _ShippingLocationState extends State<ShippingLocation> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -326,10 +353,7 @@ class _ShippingLocationState extends State<ShippingLocation> {
                       const SizedBox(width: 24),
                     ],
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Name
                   Text(
                     'Name (Receiver)',
                     style: GoogleFonts.roboto(
@@ -342,10 +366,7 @@ class _ShippingLocationState extends State<ShippingLocation> {
                     controller: _nameController,
                     hint: 'Enter name',
                   ),
-
                   const SizedBox(height: 10),
-
-                  // Phone
                   Text(
                     'Phone Number',
                     style: GoogleFonts.roboto(
@@ -359,10 +380,7 @@ class _ShippingLocationState extends State<ShippingLocation> {
                     hint: 'Enter phone number',
                     keyboardType: TextInputType.phone,
                   ),
-
                   const SizedBox(height: 10),
-
-                  // House
                   Text(
                     'House No., Street / Building',
                     style: GoogleFonts.roboto(
@@ -375,10 +393,7 @@ class _ShippingLocationState extends State<ShippingLocation> {
                     controller: _houseController,
                     hint: 'e.g., 225, Purok Alpha',
                   ),
-
                   const SizedBox(height: 10),
-
-                  // Address Picker
                   Text(
                     'Address',
                     style: GoogleFonts.roboto(
@@ -407,10 +422,7 @@ class _ShippingLocationState extends State<ShippingLocation> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
-                  // Postal Code
                   Text(
                     'Postal Code',
                     style: GoogleFonts.roboto(
@@ -424,13 +436,10 @@ class _ShippingLocationState extends State<ShippingLocation> {
                     hint: 'Enter postal code',
                     keyboardType: TextInputType.number,
                   ),
-
                   const SizedBox(height: 20),
                 ],
               ),
             ),
-
-            // Save button fixed at bottom
             Positioned(
               left: 20,
               right: 20,

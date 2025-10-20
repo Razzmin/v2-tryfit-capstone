@@ -109,7 +109,7 @@ class _CompletedPageState extends State<CompletedPage> {
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 18),
 
               // Tabs
               SizedBox(
@@ -122,7 +122,7 @@ class _CompletedPageState extends State<CompletedPage> {
                         return GestureDetector(
                           onTap: () => _navigateTo(tab),
                           child: Container(
-                            margin: const EdgeInsets.only(right: 28),
+                            margin: const EdgeInsets.only(right: 18),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 6,

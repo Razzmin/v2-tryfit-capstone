@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChangePassword extends StatefulWidget {
   const ChangePassword({super.key});
@@ -17,8 +18,11 @@ class _ChangePasswordState extends State<ChangePassword> {
   bool showCurrent = false;
   bool showNew = false;
   bool showConfirm = false;
+  bool isLoading = false;
 
-  void handleSetPassword() {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<void> handleSetPassword() async {
     String currentPassword = currentPasswordController.text.trim();
     String newPassword = newPasswordController.text.trim();
     String confirmPassword = confirmPasswordController.text.trim();
@@ -40,11 +44,53 @@ class _ChangePasswordState extends State<ChangePassword> {
       return;
     }
 
-    // Simulate success (since no Firebase)
-    showAlert('Success', 'Your password has been changed.');
-    currentPasswordController.clear();
-    newPasswordController.clear();
-    confirmPasswordController.clear();
+    setState(() => isLoading = true);
+
+    try {
+      final user = _auth.currentUser;
+
+      if (user == null || user.email == null) {
+        showAlert('Error', 'No user found. Please log in again.');
+        return;
+      }
+
+      // Re-authenticate the user before changing password
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPassword);
+
+      showAlert('Success', 'Your password has been successfully changed.');
+      currentPasswordController.clear();
+      newPasswordController.clear();
+      confirmPasswordController.clear();
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'wrong-password':
+          message = 'Your current password is incorrect.';
+          break;
+        case 'weak-password':
+          message = 'Password should be at least 6 characters.';
+          break;
+        case 'requires-recent-login':
+          message = 'Please log in again and try changing your password.';
+          break;
+        case 'user-not-found':
+          message = 'User not found.';
+          break;
+        default:
+          message = 'An error occurred: ${e.message}';
+      }
+      showAlert('Error', message);
+    } catch (e) {
+      showAlert('Error', 'Unexpected error: $e');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   void showAlert(String title, String message) {
@@ -67,107 +113,123 @@ class _ChangePasswordState extends State<ChangePassword> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.black,
-                      size: 24,
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.black,
+                          size: 24,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Text(
+                        "Change Password",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+                  const Center(
+                    child: Text(
+                      "Enter new password below to change your password",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF9747FF), fontSize: 14),
                     ),
-                    onPressed: () => Navigator.pop(context),
                   ),
+
+                  const SizedBox(height: 20),
                   const Text(
-                    "Change Password",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    "Current Password",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
                   ),
-                  const SizedBox(width: 24),
+                  passwordInput(currentPasswordController, showCurrent, () {
+                    setState(() => showCurrent = !showCurrent);
+                  }),
+
+                  const Text(
+                    "New Password",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  passwordInput(newPasswordController, showNew, () {
+                    setState(() => showNew = !showNew);
+                  }),
+
+                  const Text(
+                    "Confirm Password",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  passwordInput(confirmPasswordController, showConfirm, () {
+                    setState(() => showConfirm = !showConfirm);
+                  }),
+
+                  const Spacer(),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : handleSetPassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7A5AF8),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        "SET",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-
-              const SizedBox(height: 20),
-              const Center(
-                child: Text(
-                  "Enter new password below to change your password",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF9747FF), fontSize: 14),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              const Text(
-                "Current Password",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-              passwordInput(currentPasswordController, showCurrent, () {
-                setState(() => showCurrent = !showCurrent);
-              }),
-
-              const Text(
-                "New Password",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-              passwordInput(newPasswordController, showNew, () {
-                setState(() => showNew = !showNew);
-              }),
-
-              const Text(
-                "Confirm Password",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-              passwordInput(confirmPasswordController, showConfirm, () {
-                setState(() => showConfirm = !showConfirm);
-              }),
-
-              const Spacer(),
-
-              // SET Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: handleSetPassword,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7A5AF8),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    "SET",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+
+          // Loading overlay
+          if (isLoading)
+            Container(
+              color: Colors.black26,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(Color(0xFF9747FF)),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -204,5 +266,13 @@ class _ChangePasswordState extends State<ChangePassword> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    currentPasswordController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
   }
 }
