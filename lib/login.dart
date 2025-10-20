@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:tryfit_capstone/homepage.dart';
 import 'package:tryfit_capstone/signup.dart';
@@ -14,53 +15,89 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   TextEditingController email= TextEditingController();
   TextEditingController password= TextEditingController();
-  bool hidePassword = true;
 
- signIn() async {
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.text.trim(),
-        password: password.text.trim(),
-      );
+  bool hidePassword = true; 
+  bool isLoading = false; 
 
-      developer.log("Login Successful!");
+    Future<void> signIn() async {
+      
+      if (email.text.trim().isEmpty || password.text.trim().isEmpty) {
+        showErrorPopup("Please enter both email and password.");
+        return;
+      }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Homepage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      developer.log("FirebaseAuthException: ${e.code} - ${e.message}");
-      String message = "";
-      switch (e.code) {
+      setState(() => isLoading = true); 
+
+      try {
+        //user sign in
+        UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email.text.trim(),
+          password: password.text.trim()
+        );
+
+        final User? user = userCredential.user;
+
+        if (user != null) {
+          final docRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+          
+          final DocumentSnapshot<Map<String, dynamic>> userDoc = 
+          await docRef.get(); 
+
+          if (userDoc.exists) {
+            developer.log("User Firestore data: ${userDoc.data()}");
+          } else {
+            developer.log("No Firestore data found for this user.");
+            showErrorPopup("Logged in, but user profile data not found.");
+            setState(() => isLoading = false);
+          }
+        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Homepage()),
+          );
+      } on FirebaseAuthException catch (e) {
+        developer.log("FirebaseAuthException: ${e.code} - ${e.message}");
+        String message;
+        switch (e.code) {
         case 'user-not-found':
+        case 'auth/user-not-found':
           message = 'No user found with that Email.';
           break;
         case 'wrong-password':
+        case 'auth/wrong-password':
           message = 'Incorrect Password.';
           break;
         case 'invalid-email':
+        case 'auth/invalid-email':
           message = 'Please enter a valid email address.';
           break;
         case 'invalid-credential':
+        case 'auth/invalid-credential':
           message = 'Invalid email or password.';
           break;
         case 'too-many-requests':
+        case 'auth/too-many-requests':
           message = 'Too many attempts. Try again later.';
+          break; 
+        case 'network-request-failed':
+        case 'auth/network-request-failed':
+          message = 'Network error.Check your connection.';
           break;
-        default:
+         default:
           message = 'Login Failed. Please try again.';
-      }
-
-      showErrorPopup(message);
-    } catch (e) {
-      developer.log("Unknown Error: $e");
+        }
+        showErrorPopup(message);
+      } catch (e) {
+      developer.log("Unknown Error during sign-in: $e");
       showErrorPopup("An unexpected error occurred: $e");
+    } finally {
+      if(mounted) setState(() => isLoading = false);  
+      }
     }
-  }
 
-  // 🔹 ERROR POPUP FUNCTION — add this INSIDE the class but OUTSIDE signIn()
-  void showErrorPopup(String message) {
+    //alert dialog para alam ni user saan may mali
+     void showErrorPopup(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -75,11 +112,20 @@ class _LoginState extends State<Login> {
       ),
     );
   }
+  @override 
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
        children: [
+        //bg image
         Container(
           decoration: const BoxDecoration(
             image: DecorationImage(image: 
@@ -88,7 +134,8 @@ class _LoginState extends State<Login> {
             ),
           ),
         ),
-        //login form
+        
+        //Main content (login form)
         Center (
           child: SingleChildScrollView(
             child: Padding(
@@ -105,7 +152,22 @@ class _LoginState extends State<Login> {
                       fontFamily: 'Montserrat',
                     ),
                   ),
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 10),
+
+                //email label n inputbox
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Email:",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: email,
                   keyboardType: TextInputType.emailAddress,
@@ -118,8 +180,23 @@ class _LoginState extends State<Login> {
                     ),
                   ),
                 ),
+                ],
+              ),
 
-              const SizedBox(height: 30),
+              //password label n input
+            const SizedBox(height: 10),
+            Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Password:",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+              const SizedBox(height: 10),
                 TextField(
                   controller: password,
                   obscureText: hidePassword,
@@ -135,18 +212,23 @@ class _LoginState extends State<Login> {
                        hidePassword ? Icons.visibility_off : Icons.visibility, 
                    ),
                    onPressed: () {
-                    setState(() {
-                      hidePassword = !hidePassword;
-                    });
-                   },
+                    setState(() =>
+                      hidePassword = !hidePassword);
+                    },
                     ),
                   ),
                 ),
+                ],
+                ),
+
+
                 const SizedBox(height:40),
-                //Login Button
+
+                //login button 
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(onPressed: signIn,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : signIn,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -160,7 +242,9 @@ class _LoginState extends State<Login> {
                    ),
                   ),
                    ),
+
                 const SizedBox(height: 20),
+
                 //signup link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -189,6 +273,17 @@ class _LoginState extends State<Login> {
                 ),
                 ],
               ),
+              ),
+            ),
+           ),
+
+           //overlay if nagloloading pa sya 
+           if (isLoading)
+           Container(
+            color: Colors.black45,
+            child: const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation(Color(0xFF9747FF)),
               ),
             ),
            ),

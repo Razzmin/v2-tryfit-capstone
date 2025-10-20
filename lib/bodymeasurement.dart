@@ -18,23 +18,70 @@ class _BodymeasurementState extends State<Bodymeasurement> {
   final TextEditingController height = TextEditingController();
   final TextEditingController weight = TextEditingController();
   final TextEditingController waist = TextEditingController();
+  
   bool showPopup = false;
+  String? docId; // for update, stores firestore docu id, if nageexist na sha
 
-  // save measurements to database
-  saveMeasurements() async {
+  @override
+  void initState() {
+    super.initState();
+    fetchExistingMeasurements();
+  }
+
+  // kukunin user saved measurement from firestore
+  Future<void> fetchExistingMeasurements() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      showErrorPopup('You must be logged in.');
-      return;
+    if (user == null) return;
+  
+  //look for measurement field where userid = current user
+    try{
+      final querySnapshot = await FirebaseFirestore.instance.collection('measurements').
+      where('userId', isEqualTo: user.uid).get();
+
+      if(querySnapshot.docs.isNotEmpty) {
+        final doc = querySnapshot.docs.first;
+        docId = doc.id; //saves id for updating 
+        final data = doc.data();
+
+        height.text = data['height'] ?? '';
+        weight.text = data['weight'] ?? '';
+        waist.text = data['waist'] ?? '';
+      }
+    } catch (e) {
+      developer.log('Error fetching measurements: $e');
+    }
     }
 
+    Future<void> saveMeasurement() async {
+    final user = FirebaseAuth.instance.currentUser;
+    
+     if (user == null) {
+      showErrorPopup('You must be logged in');
+      return;
+     }
+
     try {
-      await FirebaseFirestore.instance.collection('measurements').add({
+      //data to save
+      final measurementData = {
         'height' : height.text,
         'weight' : weight.text,
         'waist' : waist.text,
         'userId' : user.uid,
-      });
+        'updatedAt' : FieldValue.serverTimestamp(),
+      };
+
+      if(docId != null) {
+        await FirebaseFirestore.instance.
+        collection('measurements').doc(docId).
+        set(measurementData, SetOptions(merge: true));
+        developer.log('Updated existing measurement');
+      } else {
+        final newDoc = await FirebaseFirestore.instance.
+        collection('measurements').add(measurementData);
+        docId = newDoc.id;
+        developer.log('Created new measurement');
+      }
+      //show up confirm to save
       setState(() {
         showPopup = true;
       });
@@ -43,19 +90,60 @@ class _BodymeasurementState extends State<Bodymeasurement> {
      developer.log('Error saving measurements: $e');
     }
   }
-  //pop up message -- if may mali sa in-input
+  //error pop up if may error 
   void showErrorPopup (String message) {
     showDialog(context: context, 
     builder: (context) => AlertDialog(
       title: const Text("Error"),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text ("OK"),
+        TextButton(onPressed: () => Navigator.pop(context), 
+        child: const Text ("OK"),
         )
       ],
     ),
     );
   }
+
+//dispose
+ @override 
+ void dispose() {
+  height.dispose();
+  weight.dispose();
+  waist.dispose();
+  super.dispose();
+ }
+   Widget buildInput(String label, String hint, TextEditingController controller) {
+      return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                     Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                  const SizedBox(height: 10),
+                  TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20)
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16, horizontal: 20),
+                      ), 
+                  ),
+                   const SizedBox(height: 10),
+               ],
+            );
+    }
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +165,8 @@ class _BodymeasurementState extends State<Bodymeasurement> {
              child: Padding(
               padding: const EdgeInsets.only(top:30, left: 20),
                  child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.black),
+                        icon: const Icon(Icons.navigate_before, color: Colors.black),
+                        iconSize: 30,
                         onPressed:() =>  Navigator.pushReplacement(context,
                       MaterialPageRoute(builder: (context) => Signup()),
                   ),
@@ -103,67 +192,32 @@ class _BodymeasurementState extends State<Bodymeasurement> {
                           fontFamily: 'Monteserrat' 
                         ),
                       ),
-
-
+                    const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Text(
+                      "Enter your measurement details",
+                      style: TextStyle(color:  Color.fromARGB(255, 112, 52, 191)),
+                    ),
+                  ],
+                ),
                   const SizedBox(height: 20),
 
-                  TextField(
-                  controller: height,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: "Enter your height in (cm)",
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20)
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 20),
-                      ), 
-                  ),
-
-                   const SizedBox(height: 20),
-
-                    TextField(
-                    controller: weight,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                    hintText: "Enter your weight in (kg)",
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20)
-                    ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 20),
-                  ), 
-                ), 
-
-                  const SizedBox(height: 20),
-
-                    TextField(
-                    controller: waist,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                    hintText: "Enter your waist in (cm)",
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20)
-                    ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 20),
-                   ),
-                ), 
-                  
-                const SizedBox(height:40),
+                //height input
+                buildInput("Height:", "Enter your height in (cm)", height),
+                buildInput("Weight:", "Enter your weight in (kg)", weight),
+                buildInput("Waist:", "Enter your waist in (cm)", waist),
+                
+                const SizedBox(height:30),
 
                 //Next Button
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(onPressed: () {
-                  developer.log("test");
+                  child: ElevatedButton(onPressed: () async {
+                  await saveMeasurement(); 
+                  if (!mounted) return;
                   Navigator.pushReplacement(context,
+                
                   MaterialPageRoute(builder: (context) => Bodytracking()),
                   );
                 },

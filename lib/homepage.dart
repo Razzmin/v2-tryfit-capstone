@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:tryfit_capstone/addcart.dart';
 import 'edit_profile_page.dart';
-import 'orders_page.dart'; // ✅ keep this import
+import 'orders_page.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -89,7 +90,7 @@ class _HomePageState extends State<Homepage> {
       // Home content
       body: _homeContent(),
 
-      // Bottom navigation bar
+      // Bottom navigation bar — updated to use AddCart
       bottomNavigationBar: Container(
         height: 80,
         decoration: const BoxDecoration(
@@ -101,16 +102,15 @@ class _HomePageState extends State<Homepage> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             IconButton(
-              onPressed: () {
-                // already on homepage
-              },
+              onPressed: () {},
               icon: Icon(FontAwesomeIcons.house, color: purple),
             ),
             IconButton(
               onPressed: () {
+                // ✅ Navigate to AddCart page (replace current)
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const CartPage()),
+                  MaterialPageRoute(builder: (context) => const Addcart()),
                 );
               },
               icon: Icon(FontAwesomeIcons.cartShopping, color: Colors.grey),
@@ -428,14 +428,4 @@ class _HomePageState extends State<Homepage> {
       ),
     );
   }
-}
-
-// Local placeholder pages
-class CartPage extends StatelessWidget {
-  const CartPage({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('Cart', style: GoogleFonts.kronaOne())),
-    body: const Center(child: Text('Cart Page')),
-  );
 }
