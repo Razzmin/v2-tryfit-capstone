@@ -1,8 +1,12 @@
+// homepage.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'edit_profile_page.dart';
+import 'orders_page.dart'; // ✅ keep this import
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -20,7 +24,6 @@ class _HomePageState extends State<Homepage> {
     'Shorts',
   ];
   List<String> _filteredSuggestions = [];
-  bool _isMenuOpen = false;
 
   Color purple = const Color(0xFF9747FF);
   Color lightBg = const Color(0xFFDEDEDE);
@@ -28,7 +31,6 @@ class _HomePageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
-    // Make the status bar color match your gradient
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Color(0xFFC7A3FF),
@@ -50,21 +52,15 @@ class _HomePageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 🔹 Updated Drawer Design (Matches your screenshot)
       drawer: Drawer(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Purple background
             Container(color: const Color.fromRGBO(162, 89, 251, 0.91)),
-
-            // Blur effect overlay
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Container(color: Colors.transparent),
             ),
-
-            // Drawer content
             SafeArea(
               child: ListView(
                 padding: const EdgeInsets.only(top: 30),
@@ -81,11 +77,7 @@ class _HomePageState extends State<Homepage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // TOPS section
                   _categorySection("Tops", ["T-Shirts", "Longsleeves"]),
-
-                  // BOTTOMS section
                   _categorySection("Bottoms", ["Pants", "Shorts"]),
                 ],
               ),
@@ -94,133 +86,10 @@ class _HomePageState extends State<Homepage> {
         ),
       ),
 
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFC7A3FF), Colors.white],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // 🔹 Header Section
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Text(
-                        "TRYFIT",
-                        style: GoogleFonts.kronaOne(
-                          fontSize: 28,
-                          color: Colors.black,
-                          letterSpacing: 3,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        // ✅ Menu Button to open Drawer
-                        Builder(
-                          builder: (context) => IconButton(
-                            icon: const Icon(
-                              FontAwesomeIcons.bars,
-                              color: Colors.black,
-                            ),
-                            onPressed: () {
-                              Scaffold.of(context).openDrawer();
-                            },
-                          ),
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: handleSearch,
-                            decoration: InputDecoration(
-                              hintText: "Search...",
-                              filled: true,
-                              fillColor: lightBg,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            FontAwesomeIcons.comments,
-                            color: Colors.black,
-                          ),
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                    if (_filteredSuggestions.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(top: 5),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 4),
-                          ],
-                        ),
-                        child: Column(
-                          children: _filteredSuggestions
-                              .map(
-                                (s) => ListTile(
-                                  title: Text(s),
-                                  onTap: () {
-                                    _searchController.text = s;
-                                    setState(() => _filteredSuggestions = []);
-                                  },
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+      // Home content
+      body: _homeContent(),
 
-              const SizedBox(height: 10),
-
-              // 🔹 Scrollable Content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      sectionTitle("New Arrivals"),
-                      productList(180, 130),
-                      sectionTitle("Popular"),
-                      popularList(),
-                      sectionTitle("Our Picks for You"),
-                      gridProducts(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-
-      // 🔹 Bottom Navigation Bar
+      // Bottom navigation bar
       bottomNavigationBar: Container(
         height: 80,
         decoration: const BoxDecoration(
@@ -230,18 +99,166 @@ class _HomePageState extends State<Homepage> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            Icon(FontAwesomeIcons.house, color: Color(0xFF9747FF)),
-            Icon(FontAwesomeIcons.cartShopping, color: Colors.grey),
-            Icon(FontAwesomeIcons.boxOpen, color: Colors.grey),
-            Icon(FontAwesomeIcons.user, color: Colors.grey),
+          children: [
+            IconButton(
+              onPressed: () {
+                // already on homepage
+              },
+              icon: Icon(FontAwesomeIcons.house, color: purple),
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CartPage()),
+                );
+              },
+              icon: Icon(FontAwesomeIcons.cartShopping, color: Colors.grey),
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OrdersPage()),
+                );
+              },
+              icon: Icon(FontAwesomeIcons.boxOpen, color: Colors.grey),
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EditProfilePage(),
+                  ),
+                );
+              },
+              icon: Icon(FontAwesomeIcons.user, color: Colors.grey),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // 🔹 Drawer category section (flat structure)
+  Widget _homeContent() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFC7A3FF), Colors.white],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      "TRYFIT",
+                      style: GoogleFonts.kronaOne(
+                        fontSize: 28,
+                        color: Colors.black,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(
+                            FontAwesomeIcons.bars,
+                            color: Colors.black,
+                          ),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: handleSearch,
+                          decoration: InputDecoration(
+                            hintText: "Search...",
+                            filled: true,
+                            fillColor: lightBg,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          FontAwesomeIcons.comments,
+                          color: Colors.black,
+                        ),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                  if (_filteredSuggestions.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 5),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 4),
+                        ],
+                      ),
+                      child: Column(
+                        children: _filteredSuggestions
+                            .map(
+                              (s) => ListTile(
+                                title: Text(s),
+                                onTap: () {
+                                  _searchController.text = s;
+                                  setState(() => _filteredSuggestions = []);
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 100),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    sectionTitle("New Arrivals"),
+                    productList(180, 130),
+                    sectionTitle("Popular"),
+                    popularList(),
+                    sectionTitle("Our Picks for You"),
+                    gridProducts(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _categorySection(String title, List<String> items) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
@@ -286,90 +303,71 @@ class _HomePageState extends State<Homepage> {
     );
   }
 
-  Widget sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Text(
-        title,
-        style: GoogleFonts.kronaOne(
-          fontSize: 16,
-          color: Colors.black,
-          letterSpacing: 1,
-        ),
+  Widget sectionTitle(String title) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    child: Text(
+      title,
+      style: GoogleFonts.kronaOne(
+        fontSize: 16,
+        color: Colors.black,
+        letterSpacing: 1,
       ),
-    );
-  }
+    ),
+  );
 
+  // ✅ Placeholder product list (gray boxes)
   Widget productList(double height, double width) {
-    final List<String> images = List.generate(
-      5,
-      (index) => 'https://via.placeholder.com/130x180.png?text=Product+$index',
-    );
-
     return SizedBox(
       height: height,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: images.length,
-        itemBuilder: (context, index) {
-          return Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                images[index],
-                width: width,
-                fit: BoxFit.cover,
-              ),
-            ),
-          );
-        },
+        itemCount: 5,
+        itemBuilder: (context, index) => Container(
+          margin: const EdgeInsets.only(right: 12),
+          width: width,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE0E0E0),
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       ),
     );
   }
 
+  // ✅ Placeholder popular list (gray circles)
   Widget popularList() {
-    final List<String> images = List.generate(
-      6,
-      (index) => 'https://via.placeholder.com/100x100.png?text=Popular+$index',
-    );
     return SizedBox(
       height: 130,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: images.length,
-        itemBuilder: (context, index) {
-          return Container(
-            width: 100,
-            margin: const EdgeInsets.only(right: 12),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  backgroundImage: NetworkImage(images[index]),
-                  radius: 40,
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  "Item $index",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          );
-        },
+        itemCount: 6,
+        itemBuilder: (context, index) => Container(
+          width: 100,
+          margin: const EdgeInsets.only(right: 12),
+          child: Column(
+            children: [
+              CircleAvatar(
+                backgroundColor: const Color(0xFFE0E0E0),
+                radius: 40,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                "Item $index",
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
+  // ✅ Placeholder grid products (gray rectangles)
   Widget gridProducts() {
-    final List<String> images = List.generate(
-      6,
-      (index) => 'https://via.placeholder.com/150.png?text=Pick+$index',
-    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: GridView.builder(
@@ -381,56 +379,63 @@ class _HomePageState extends State<Homepage> {
           crossAxisSpacing: 12,
           childAspectRatio: 0.65,
         ),
-        itemCount: images.length,
-        itemBuilder: (context, index) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
+        itemCount: 6,
+        itemBuilder: (context, index) => Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12),
                   ),
-                  child: Image.network(
-                    images[index],
-                    width: double.infinity,
-                    height: 150,
-                    fit: BoxFit.cover,
-                  ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Product $index",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        "₱${(index + 1) * 100}",
-                        style: TextStyle(color: purple),
-                      ),
-                      const Text(
-                        "⭐ 4.8 • 1.2k Sold",
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      const Text(
-                        "🚚 Free Delivery",
-                        style: TextStyle(fontSize: 12, color: Colors.green),
-                      ),
-                    ],
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Product $index",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "₱${(index + 1) * 100}",
+                      style: TextStyle(color: purple),
+                    ),
+                    const Text(
+                      "⭐ 4.8 • 1.2k Sold",
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    const Text(
+                      "🚚 Free Delivery",
+                      style: TextStyle(fontSize: 12, color: Colors.green),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
+
+// Local placeholder pages
+class CartPage extends StatelessWidget {
+  const CartPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text('Cart', style: GoogleFonts.kronaOne())),
+    body: const Center(child: Text('Cart Page')),
+  );
 }
