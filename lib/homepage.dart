@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tryfit_capstone/addcart.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -230,12 +231,30 @@ class _HomePageState extends State<Homepage> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            Icon(FontAwesomeIcons.house, color: Color(0xFF9747FF)),
-            Icon(FontAwesomeIcons.cartShopping, color: Colors.grey),
-            Icon(FontAwesomeIcons.boxOpen, color: Colors.grey),
-            Icon(FontAwesomeIcons.user, color: Colors.grey),
-          ],
+          children: [
+          IconButton(
+    icon: const Icon(FontAwesomeIcons.house, color: Color(0xFF9747FF)),
+    onPressed: () {},
+  ),
+  IconButton(
+    icon: const Icon(FontAwesomeIcons.cartShopping, color: Colors.grey),
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const Addcart()),
+      );
+    },
+  ),
+  IconButton(
+    icon: const Icon(FontAwesomeIcons.boxOpen, color: Colors.grey),
+    onPressed: () {},
+  ),
+  IconButton(
+    icon: const Icon(FontAwesomeIcons.user, color: Colors.grey),
+    onPressed: () {},
+  ),
+],
+
         ),
       ),
     );
